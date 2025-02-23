@@ -1,7 +1,7 @@
 services:
   postgis:
     build: .
-    container_name: cities_database
+    container_name: zhpark
     env_file:
       - path: ./.env
     volumes:
