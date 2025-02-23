@@ -1,14 +1,33 @@
 services:
   postgis:
-    build: .
-    container_name: zhpark
+    build:
+      context: .
+      dockerfile: Dockerfile.postgis
+    container_name: zhpark-db
     env_file:
       - path: ./.env
     volumes:
       - db:/var/lib/postgresql/data
       - ./data:/data
     ports:
-      - "5411:5432"
-    shm_size: '1gb'
+      - "${POSTGRES_PORT}:5432"
+
+  flask-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.flask
+    container_name: zhpark-api
+    environment:
+      - POSTGRES_HOST=postgis
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    depends_on:
+      - postgis
+    ports:
+      - "5000:5000"
+    restart: always  # Ensures the container restarts if it crashes
+
 volumes:
   db:

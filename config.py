@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 import os
 
 class PathManager:
@@ -12,8 +11,6 @@ class DBManager:
             self.park_state = 'park_state'
 
     def __init__(self):
-        load_dotenv(dotenv_path='./.env')
-
         self.host = os.getenv('POSTGRES_HOST')
         self.port = os.getenv('POSTGRES_PORT')
         self.user = os.getenv('POSTGRES_USER')

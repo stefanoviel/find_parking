@@ -1,0 +1,12 @@
+# Core dependencies
+flask
+sqlalchemy
+python-dotenv
+gunicorn
+
+# Geospatial dependencies
+geopandas
+geoalchemy2
+
+# PostgreSQL driver for SQLAlchemy
+psycopg2-binary
