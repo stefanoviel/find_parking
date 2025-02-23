@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Parking Map</title>
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <style>
+    body { margin: 0; padding: 0; }
+    #map { width: 100%; height: 100vh; }
+    .control-panel {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+      z-index: 1000;
+    }
+    .legend {
+      position: absolute;
+      bottom: 30px;
+      right: 10px;
+      background: white;
+      padding: 10px;
+      border: 1px solid #ccc;
+      z-index: 1000;
+    }
+    .legend img {
+      width: 20px;
+      height: 33px;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div class="legend">
+    <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png"> White Zone</div>
+    <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png"> Blue Zone</div>
+    <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png"> Free Spot</div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Proj4 JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.6.2/proj4.js"></script>
+  <!-- MarkerClusterGroup JS -->
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script>
+    // Define the projection transformation from CH1903+ (LV95) to WGS84
+    proj4.defs("EPSG:2056", "+proj=somerc +lat_0=46.952405555556 +lon_0=7.4395833333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +towgs84=674.374,15.056,405.346,0.0,0.0,0.0,0.0 +units=m +no_defs");
+
+
+    function convertToWGS84(ch_x, ch_y) {
+      const [lon, lat] = proj4("EPSG:2056", "EPSG:4326", [ch_x, ch_y]);
+      return { lat, lon };
+    }
+
+    // Create the map – center and zoom level should be adjusted to your city
+    const initialCoords = convertToWGS84(2679750, 1248625); // Center around one of our demo points
+    const map = L.map('map', {
+      maxZoom: 22  // Increased max zoom level
+    }).setView([initialCoords.lat, initialCoords.lon], 16);
+
+    // Add an OpenStreetMap tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 22,  // Match the map's maxZoom
+      maxNativeZoom: 19  // This is OSM's max zoom level - tiles will be scaled beyond this
+    }).addTo(map);
+
+    // Define custom icons for different parking types
+    const parkingTypeIcons = {
+      'Weiss markiert': L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      }),
+      'Blaue Zone': L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+      })
+    };
+
+    // Add this with the other icon definitions
+    const freeIcon = L.icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.1/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    // Objects to keep track of markers and timers by parking slot id
+    const markers = {};
+    const timers = {};
+
+    // Helper functions for localStorage persistence
+    function saveSlotState(id, state) {
+      localStorage.setItem('parkingSlot_' + id, JSON.stringify(state));
+    }
+
+    function getSlotState(id) {
+      const state = localStorage.getItem('parkingSlot_' + id);
+      return state ? JSON.parse(state) : null;
+    }
+
+    function removeSlotState(id) {
+      localStorage.removeItem('parkingSlot_' + id);
+    }
+
+    // Simulate a dummy API call – replace this with your actual API call as needed.
+    function dummyApiCall(status, slotId) {
+      console.log(`Dummy API call: Parking slot ${slotId} marked as ${status}`);
+      // Example:
+      // fetch(`https://your-backend.com/api/parking/${slotId}?status=${status}`)
+      //   .then(res => res.json())
+      //   .then(data => console.log(data))
+      //   .catch(err => console.error(err));
+    }
+
+    // Create a marker cluster group with adjusted settings
+    const markerClusterGroup = L.markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 120,  // Increased to create fewer clusters
+      spiderfyOnMaxZoom: false,  // Disabled to improve performance
+      disableClusteringAtZoom: 18, // Lowered to maintain clustering longer
+      animate: false,  // Disabled animations for better performance
+      removeOutsideVisibleBounds: true,  // Remove clusters/markers outside view
+      zoomToBoundsOnClick: true,
+      showCoverageOnHover: false  // Disabled for better performance
+    });
+
+    // Load parking slots from your backend API
+    function loadParkingSlots() {
+      fetch('/api/parkings')
+        .then(response => response.json())
+        .then(data => {
+          data.forEach(slot => {
+            // Assuming the API returns { id, x, y, ... } where x/y are coordinates.
+            // Adjust if necessary (e.g., converting projections).
+            const lat = slot.y;
+            const lng = slot.x;
+
+            // Check persistent state from localStorage
+            const state = getSlotState(slot.id);
+            let isFree = false;
+            let remainingTime = 0;
+            if (state && state.free && state.expiration > Date.now()) {
+              isFree = true;
+              remainingTime = state.expiration - Date.now();
+            }
+
+            const marker = L.marker([lat, lng], { icon: parkingTypeIcons[slot.type] }).addTo(map);
+            markers[slot.id] = marker;
+            marker.bindPopup(createPopupContent(slot, marker));
+            marker.on('popupopen', (e) => {
+              onPopupOpen(e, slot, marker);
+            });
+
+            // If the slot is already free, schedule its timer
+            if (isFree) {
+              if (timers[slot.id]) clearTimeout(timers[slot.id]);
+              timers[slot.id] = setTimeout(() => {
+                markSlotBusy(slot, marker);
+              }, remainingTime);
+            }
+          });
+        })
+        .catch(err => console.error('Error loading parking slots:', err));
+    }
+
+    // Modify loadParkingSlotsDemo function
+    function loadParkingSlotsDemo() {
+      fetch('parkings.json')
+        .then(response => response.json())
+        .then(parkingData => {
+          const allowedTypes = ['Weiss markiert', 'Blaue Zone'];
+          const filteredData = parkingData.filter(slot => allowedTypes.includes(slot.type));
+          
+          // Clear existing markers and cluster group
+          Object.values(markers).forEach(marker => {
+            if (marker) {
+              markerClusterGroup.removeLayer(marker);
+            }
+          });
+          map.removeLayer(markerClusterGroup);
+          markerClusterGroup.clearLayers();
+          
+          const chunkSize = 200;
+          let index = 0;
+
+          function processChunk() {
+            const chunk = filteredData.slice(index, index + chunkSize);
+            const bounds = map.getBounds().pad(0.5);
+            
+            chunk.forEach(slot => {
+              const { lat, lon } = convertToWGS84(slot.x, slot.y);
+              
+              if (bounds.contains([lat, lon])) {
+                if (markers[slot.id]) {
+                  markerClusterGroup.removeLayer(markers[slot.id]);
+                  delete markers[slot.id];
+                }
+
+                try {
+                  const icon = slot.free ? freeIcon : parkingTypeIcons[slot.type];
+                  if (!icon) {
+                    console.error('Invalid icon for slot type:', slot.type);
+                    return;
+                  }
+
+                  const marker = L.marker([lat, lon], { icon });
+                  markers[slot.id] = marker;
+                  
+                  // Add click handler instead of popup
+                  marker.on('click', () => {
+                    if (marker.getIcon() === freeIcon) {
+                      // If it's green, change back to original
+                      marker.setIcon(parkingTypeIcons[slot.type]);
+                      slot.free = false;
+                      removeSlotState(slot.id);
+                      dummyApiCall('busy', slot.id);
+                    } else {
+                      // If it's original color, change to green
+                      marker.setIcon(freeIcon);
+                      slot.free = true;
+                      saveSlotState(slot.id, { free: true });
+                      dummyApiCall('free', slot.id);
+                    }
+                  });
+                  
+                  markerClusterGroup.addLayer(marker);
+                } catch (err) {
+                  console.error('Error creating marker:', err);
+                }
+              }
+            });
+
+            index += chunkSize;
+            if (index < filteredData.length) {
+              setTimeout(processChunk, 0);
+            }
+          }
+
+          processChunk();
+          map.addLayer(markerClusterGroup);
+
+          // Debounced moveend event handler
+          let moveTimeout;
+          map.on('moveend', () => {
+            if (moveTimeout) clearTimeout(moveTimeout);
+            moveTimeout = setTimeout(() => {
+              const bounds = map.getBounds().pad(0.5);
+              filteredData.forEach(slot => {
+                const { lat, lon } = convertToWGS84(slot.x, slot.y);
+                if (bounds.contains([lat, lon]) && !markers[slot.id]) {
+                  try {
+                    const icon = slot.free ? freeIcon : parkingTypeIcons[slot.type];
+                    if (!icon) return;
+
+                    const marker = L.marker([lat, lon], { icon });
+                    markers[slot.id] = marker;
+                    marker.bindPopup(() => createPopupContent(slot, marker));
+                    marker.on('popupopen', (e) => {
+                      onPopupOpen(e, slot, marker);
+                    });
+                    markerClusterGroup.addLayer(marker);
+                  } catch (err) {
+                    console.error('Error creating marker on moveend:', err);
+                  }
+                }
+              });
+            }, 250);
+          });
+        })
+        .catch(error => console.error('Error loading parking data:', error));
+    }
+    
+
+    // Uncomment the appropriate function call:
+    // For a real backend:
+    // loadParkingSlots();
+    // For demo purposes:
+    loadParkingSlotsDemo();
+
+  </script>
+</body>
+</html>

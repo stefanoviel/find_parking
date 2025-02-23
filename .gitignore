@@ -1,3 +1,5 @@
 nb.ipynb
 .ipynb_checkpoints
-__pycache__/
+__pycache__/*.csv
+frontend/parkings.json
+frontend/node_modules
