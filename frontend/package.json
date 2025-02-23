@@ -1,0 +1,11 @@
+{
+  "name": "parking-map-frontend",
+  "version": "1.0.0",
+  "description": "Parking Map Frontend",
+  "scripts": {
+    "start": "npx http-server -o"
+  },
+  "dependencies": {
+    "http-server": "^14.1.1"
+  }
+}

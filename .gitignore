@@ -1,0 +1,3 @@
+*.csv
+frontend/parkings.json
+frontend/node_modules
