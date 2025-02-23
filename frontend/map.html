@@ -125,11 +125,16 @@
     // Simulate a dummy API call – replace this with your actual API call as needed.
     function dummyApiCall(status, slotId) {
       console.log(`Dummy API call: Parking slot ${slotId} marked as ${status}`);
-      // Example:
-      // fetch(`https://your-backend.com/api/parking/${slotId}?status=${status}`)
-      //   .then(res => res.json())
-      //   .then(data => console.log(data))
-      //   .catch(err => console.error(err));
+      // Make actual API call to update park state
+      fetch(`http://127.0.0.1:5000/api/park_state/${slotId}/${status === 'free' ? 1 : 0}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => console.log('API response:', data))
+      .catch(error => console.error('Error updating park state:', error));
     }
 
     // Create a marker cluster group with adjusted settings
@@ -156,7 +161,7 @@
             const lng = slot.x;
 
             // Check persistent state from localStorage
-            const state = getSlotState(slot.id);
+            const state = getSlotState(slot.park_id);
             let isFree = false;
             let remainingTime = 0;
             if (state && state.free && state.expiration > Date.now()) {
@@ -164,8 +169,8 @@
               remainingTime = state.expiration - Date.now();
             }
 
-            const marker = L.marker([lat, lng], { icon: parkingTypeIcons[slot.type] }).addTo(map);
-            markers[slot.id] = marker;
+            const marker = L.marker([lat, lng], { icon: parkingTypeIcons[slot.park_type] }).addTo(map);
+            markers[slot.park_id] = marker;
             marker.bindPopup(createPopupContent(slot, marker));
             marker.on('popupopen', (e) => {
               onPopupOpen(e, slot, marker);
@@ -173,8 +178,8 @@
 
             // If the slot is already free, schedule its timer
             if (isFree) {
-              if (timers[slot.id]) clearTimeout(timers[slot.id]);
-              timers[slot.id] = setTimeout(() => {
+              if (timers[slot.park_id]) clearTimeout(timers[slot.park_id]);
+              timers[slot.park_id] = setTimeout(() => {
                 markSlotBusy(slot, marker);
               }, remainingTime);
             }
@@ -183,13 +188,25 @@
         .catch(err => console.error('Error loading parking slots:', err));
     }
 
-    // Modify loadParkingSlotsDemo function
+    // Demo version: simulate API response if your backend is not available.
     function loadParkingSlotsDemo() {
-      fetch('parkings.json')
-        .then(response => response.json())
+      fetch('http://127.0.0.1:5000/api/parks', {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        mode: 'cors', // Explicitly state we want CORS
+        credentials: 'same-origin'
+      })
+        .then(response => {
+          console.log('Response:', response);
+          return response.json();
+        })
         .then(parkingData => {
+
           const allowedTypes = ['Weiss markiert', 'Blaue Zone'];
-          const filteredData = parkingData.filter(slot => allowedTypes.includes(slot.type));
+          const filteredData = parkingData.filter(slot => allowedTypes.includes(slot.park_type));
+
           
           // Clear existing markers and cluster group
           Object.values(markers).forEach(marker => {
@@ -205,41 +222,41 @@
 
           function processChunk() {
             const chunk = filteredData.slice(index, index + chunkSize);
-            const bounds = map.getBounds().pad(0.5);
+
             
             chunk.forEach(slot => {
-              const { lat, lon } = convertToWGS84(slot.x, slot.y);
-              
-              if (bounds.contains([lat, lon])) {
-                if (markers[slot.id]) {
-                  markerClusterGroup.removeLayer(markers[slot.id]);
-                  delete markers[slot.id];
+              const { lat, lon } = convertToWGS84(slot.lon, slot.lat);
+
+
+                if (markers[slot.park_id]) {
+                  markerClusterGroup.removeLayer(markers[slot.park_id]);
+                  delete markers[slot.park_id];
                 }
 
                 try {
-                  const icon = slot.free ? freeIcon : parkingTypeIcons[slot.type];
+                  const icon = slot.free ? freeIcon : parkingTypeIcons[slot.park_type];
                   if (!icon) {
-                    console.error('Invalid icon for slot type:', slot.type);
+                    console.error('Invalid icon for slot type:', slot.park_type);
                     return;
                   }
 
                   const marker = L.marker([lat, lon], { icon });
-                  markers[slot.id] = marker;
+                  markers[slot.park_id] = marker;
                   
                   // Add click handler instead of popup
                   marker.on('click', () => {
                     if (marker.getIcon() === freeIcon) {
                       // If it's green, change back to original
-                      marker.setIcon(parkingTypeIcons[slot.type]);
+                      marker.setIcon(parkingTypeIcons[slot.park_type]);
                       slot.free = false;
-                      removeSlotState(slot.id);
-                      dummyApiCall('busy', slot.id);
+                      removeSlotState(slot.park_id);
+                      dummyApiCall('busy', slot.park_id);
                     } else {
                       // If it's original color, change to green
                       marker.setIcon(freeIcon);
                       slot.free = true;
-                      saveSlotState(slot.id, { free: true });
-                      dummyApiCall('free', slot.id);
+                      saveSlotState(slot.park_id, { free: true });
+                      dummyApiCall('free', slot.park_id);
                     }
                   });
                   
@@ -247,7 +264,7 @@
                 } catch (err) {
                   console.error('Error creating marker:', err);
                 }
-              }
+
             });
 
             index += chunkSize;
@@ -266,14 +283,14 @@
             moveTimeout = setTimeout(() => {
               const bounds = map.getBounds().pad(0.5);
               filteredData.forEach(slot => {
-                const { lat, lon } = convertToWGS84(slot.x, slot.y);
-                if (bounds.contains([lat, lon]) && !markers[slot.id]) {
+                const { lat, lon } = convertToWGS84(slot.lat, slot.lon);
+                if (bounds.contains([lat, lon]) && !markers[slot.park_id]) {
                   try {
-                    const icon = slot.free ? freeIcon : parkingTypeIcons[slot.type];
+                    const icon = slot.free ? freeIcon : parkingTypeIcons[slot.park_type];
                     if (!icon) return;
 
                     const marker = L.marker([lat, lon], { icon });
-                    markers[slot.id] = marker;
+                    markers[slot.park_id] = marker;
                     marker.bindPopup(() => createPopupContent(slot, marker));
                     marker.on('popupopen', (e) => {
                       onPopupOpen(e, slot, marker);

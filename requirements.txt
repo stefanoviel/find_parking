@@ -1,5 +1,6 @@
 # Core dependencies
 flask
+flask-cors
 sqlalchemy
 python-dotenv
 gunicorn

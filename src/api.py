@@ -5,9 +5,12 @@ from flask import Flask, request, jsonify
 from sqlalchemy.sql import text
 from typing import List, Dict
 from src.db_init_script import initialize_db
+from flask_cors import CORS  # Import CORS
 
 
 app = Flask(__name__)
+CORS(app) 
+
 
 @app.route('/api/init_db', methods=['GET'])
 def init_db():
