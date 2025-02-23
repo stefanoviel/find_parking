@@ -42,6 +42,7 @@
     <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png"> White Zone</div>
     <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png"> Blue Zone</div>
     <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png"> Free Spot</div>
+    <div><button id="locate-me" style="margin-top: 10px;">Show My Location</button></div>
   </div>
 
   <!-- Leaflet JS -->
@@ -64,7 +65,7 @@
     const initialCoords = convertToWGS84(2679750, 1248625); // Center around one of our demo points
     const map = L.map('map', {
       maxZoom: 22  // Increased max zoom level
-    }).setView([initialCoords.lat, initialCoords.lon], 16);
+    });  // Remove setView here as we'll set it based on user location
 
     // Add an OpenStreetMap tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -295,6 +296,90 @@
     // loadParkingSlots();
     // For demo purposes:
     loadParkingSlotsDemo();
+
+    // Move location marker definition here
+    const locationMarker = L.marker([0, 0], {
+      icon: L.divIcon({
+        className: 'custom-location-marker',
+        html: `
+          <div style="
+            width: 20px;
+            height: 20px;
+            background: #4A89F3;
+            border: 3px solid white;
+            border-radius: 50%;
+            box-shadow: 0 0 0 2px #4A89F3;
+          "></div>
+        `,
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
+      })
+    });
+
+    // Add CSS for accuracy circle
+    const accuracyCircle = L.circle([0, 0], {
+      color: '#4A89F3',
+      fillColor: '#4A89F3',
+      fillOpacity: 0.15,
+      weight: 0
+    });
+
+    // Function to handle location updates
+    function handleLocation(position) {
+      const lat = position.coords.latitude;
+      const lon = position.coords.longitude;
+      const accuracy = position.coords.accuracy;
+      
+      // Update marker position
+      locationMarker.setLatLng([lat, lon]);
+      locationMarker.addTo(map);
+      
+      // Update accuracy circle
+      accuracyCircle.setLatLng([lat, lon]);
+      accuracyCircle.setRadius(accuracy);
+      accuracyCircle.addTo(map);
+
+      // Only center map on first location fix or when locate button is clicked
+      if (!map.hasInitialLocation) {
+        map.setView([lat, lon], 18);
+        map.hasInitialLocation = true;
+      }
+    }
+
+    // Function to handle location errors
+    function handleLocationError(error) {
+      console.error("Error getting location:", error);
+      alert("Unable to get your location. Please check your browser permissions.");
+      // Fall back to default location
+      map.setView([initialCoords.lat, initialCoords.lon], 16);
+    }
+
+    // Get user's location automatically when page loads
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(handleLocation, handleLocationError, {
+        enableHighAccuracy: true,
+        maximumAge: 0
+      });
+      
+      // Watch for location changes with high accuracy
+      navigator.geolocation.watchPosition(handleLocation, handleLocationError, {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 5000
+      });
+    } else {
+      alert("Geolocation is not supported by your browser");
+      map.setView([initialCoords.lat, initialCoords.lon], 16);
+    }
+
+    // Update the click handler to use the same functions
+    document.getElementById('locate-me').addEventListener('click', () => {
+      if ("geolocation" in navigator) {
+        navigator.geolocation.getCurrentPosition(handleLocation, handleLocationError);
+      } else {
+        alert("Geolocation is not supported by your browser");
+      }
+    });
 
   </script>
 </body>

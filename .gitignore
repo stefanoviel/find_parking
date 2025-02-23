@@ -3,3 +3,4 @@ nb.ipynb
 __pycache__/*.csv
 frontend/parkings.json
 frontend/node_modules
+*.csv
