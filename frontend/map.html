@@ -125,7 +125,7 @@
     function dummyApiCall(status, slotId) {
       console.log(`Dummy API call: Parking slot ${slotId} marked as ${status}`);
       // Make actual API call to update park state
-      fetch(`http://127.0.0.1:5000/api/park_state/${slotId}/${status === 'free' ? 1 : 0}`, {
+      fetch(`http://34.244.14.253:5000/api/park_state/${slotId}/${status === 'free' ? 1 : 0}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -189,7 +189,7 @@
 
     // Demo version: simulate API response if your backend is not available.
     function loadParkingSlotsDemo() {
-      fetch('http://127.0.0.1:5000/api/park_geom_state', {
+      fetch('http://34.244.14.253:5000/api/park_geom_state', {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
