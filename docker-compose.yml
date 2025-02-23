@@ -29,5 +29,15 @@ services:
       - "5000:5000"
     restart: always  # Ensures the container restarts if it crashes
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zhpark-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - flask-api
+
 volumes:
   db:
