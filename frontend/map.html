@@ -38,10 +38,6 @@
 </head>
 <body>
   <div id="map"></div>
-  <div class="control-panel">
-    <label for="timeoutInput">Timeout (seconds):</label>
-    <input type="number" id="timeoutInput" value="60" min="10" />
-  </div>
   <div class="legend">
     <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png"> White Zone</div>
     <div><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png"> Blue Zone</div>
@@ -63,13 +59,6 @@
       const [lon, lat] = proj4("EPSG:2056", "EPSG:4326", [ch_x, ch_y]);
       return { lat, lon };
     }
-
-    // Global timeout value (in seconds) read from the input
-    let globalTimeout = parseInt(document.getElementById('timeoutInput').value, 10);
-    document.getElementById('timeoutInput').addEventListener('change', (e) => {
-      globalTimeout = parseInt(e.target.value, 10);
-      console.log("Global timeout updated to", globalTimeout, "seconds");
-    });
 
     // Create the map – center and zoom level should be adjusted to your city
     const initialCoords = convertToWGS84(2679750, 1248625); // Center around one of our demo points
@@ -140,74 +129,6 @@
       //   .then(res => res.json())
       //   .then(data => console.log(data))
       //   .catch(err => console.error(err));
-    }
-
-    // Mark a parking slot as free: update localStorage, marker icon, call API, and set timer.
-    function markSlotFree(slot, marker) {
-      const timeoutSeconds = globalTimeout;
-      const expirationTime = Date.now() + timeoutSeconds * 1000;
-      saveSlotState(slot.id, { free: true, expiration: expirationTime });
-      marker.setIcon(freeIcon);  // Use red icon for free slots
-      dummyApiCall('free', slot.id);
-
-      // Clear any existing timer for this slot
-      if (timers[slot.id]) {
-        clearTimeout(timers[slot.id]);
-      }
-      // Set a timer to mark the slot busy when timeout expires
-      timers[slot.id] = setTimeout(() => {
-        markSlotBusy(slot, marker);
-      }, timeoutSeconds * 1000);
-
-      // If the popup is open, update the checkbox status
-      const checkbox = document.getElementById('freeCheckbox_' + slot.id);
-      if (checkbox) {
-        checkbox.checked = true;
-      }
-    }
-
-    // Mark a parking slot as busy: remove free state, update marker icon, and call API.
-    function markSlotBusy(slot, marker) {
-      removeSlotState(slot.id);
-      marker.setIcon(parkingTypeIcons[slot.type]);  // Revert to original icon based on parking type
-      dummyApiCall('busy', slot.id);
-
-      if (timers[slot.id]) {
-        clearTimeout(timers[slot.id]);
-        delete timers[slot.id];
-      }
-
-      const checkbox = document.getElementById('freeCheckbox_' + slot.id);
-      if (checkbox) {
-        checkbox.checked = false;
-      }
-    }
-
-    // Create HTML for the popup for a parking slot marker
-    function createPopupContent(slot, marker) {
-      const state = getSlotState(slot.id);
-      const isFree = state && state.free && state.expiration > Date.now();
-      const checkedAttr = isFree ? 'checked' : '';
-      return `
-        <div>
-          <input type="checkbox" id="freeCheckbox_${slot.id}" ${checkedAttr}>
-          <label for="freeCheckbox_${slot.id}">Tick if parking slot is free</label>
-        </div>
-      `;
-    }
-
-    // Attach an event listener to the checkbox inside the popup when it opens.
-    function onPopupOpen(e, slot, marker) {
-      const checkbox = document.getElementById('freeCheckbox_' + slot.id);
-      if (checkbox) {
-        checkbox.addEventListener('change', (event) => {
-          if (event.target.checked) {
-            markSlotFree(slot, marker);
-          } else {
-            markSlotBusy(slot, marker);
-          }
-        });
-      }
     }
 
     // Create a marker cluster group with adjusted settings
@@ -289,13 +210,11 @@
               const { lat, lon } = convertToWGS84(slot.x, slot.y);
               
               if (bounds.contains([lat, lon])) {
-                // Remove existing marker if it exists
                 if (markers[slot.id]) {
                   markerClusterGroup.removeLayer(markers[slot.id]);
                   delete markers[slot.id];
                 }
 
-                // Create new marker
                 try {
                   const icon = slot.free ? freeIcon : parkingTypeIcons[slot.type];
                   if (!icon) {
@@ -306,9 +225,21 @@
                   const marker = L.marker([lat, lon], { icon });
                   markers[slot.id] = marker;
                   
-                  marker.bindPopup(() => createPopupContent(slot, marker));
-                  marker.on('popupopen', (e) => {
-                    onPopupOpen(e, slot, marker);
+                  // Add click handler instead of popup
+                  marker.on('click', () => {
+                    if (marker.getIcon() === freeIcon) {
+                      // If it's green, change back to original
+                      marker.setIcon(parkingTypeIcons[slot.type]);
+                      slot.free = false;
+                      removeSlotState(slot.id);
+                      dummyApiCall('busy', slot.id);
+                    } else {
+                      // If it's original color, change to green
+                      marker.setIcon(freeIcon);
+                      slot.free = true;
+                      saveSlotState(slot.id, { free: true });
+                      dummyApiCall('free', slot.id);
+                    }
                   });
                   
                   markerClusterGroup.addLayer(marker);
