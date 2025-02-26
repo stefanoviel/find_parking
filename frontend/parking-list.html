@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Parking Spots</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .parking-list {
+            list-style: none;
+            padding: 0;
+        }
+        .parking-item {
+            border: 1px solid #ddd;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        .parking-item:hover {
+            transform: scale(1.01);
+        }
+        .parking-item.white-zone {
+            background-color: #ffffff;
+            border: 2px solid #cccccc;
+        }
+        .parking-item.blue-zone {
+            background-color: #e6f3ff;
+            border: 2px solid #2196F3;
+        }
+        .distance {
+            font-size: 28px;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+        .error {
+            color: red;
+            padding: 10px;
+            background-color: #ffebee;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Free Parking Spots</h1>
+    <div id="status" class="loading">Loading parking spots...</div>
+    <ul id="parkingList" class="parking-list"></ul>
+
+    <script>
+        let userLocation = null;
+
+        // Calculate distance between two points using Haversine formula
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // Earth's radius in km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c;
+            return distance;
+        }
+
+        // Format distance nicely
+        function formatDistance(distance) {
+            if (distance < 1) {
+                return `${Math.round(distance * 1000)}m`;
+            }
+            return `${distance.toFixed(1)}km`;
+        }
+
+        // Format time difference
+        function formatTimeDifference(updatedAt) {
+            console.log('Formatting time for:', updatedAt);
+            
+            // Parse the UTC timestamp
+            const updatedDate = new Date(updatedAt);
+            const now = new Date();
+            
+            // Calculate difference in minutes
+            const diffMinutes = Math.floor((now - updatedDate) / (1000 * 60));
+            
+            console.log('Time difference in minutes:', diffMinutes);
+            
+            if (diffMinutes < 1) return 'just now';
+            if (diffMinutes === 1) return '1 minute ago';
+            if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+            
+            const diffHours = Math.floor(diffMinutes / 60);
+            if (diffHours === 1) return '1 hour ago';
+            if (diffHours < 24) return `${diffHours} hours ago`;
+            
+            const diffDays = Math.floor(diffHours / 24);
+            if (diffDays === 1) return '1 day ago';
+            return `${diffDays} days ago`;
+        }
+
+        // Fetch and display parking spots
+        async function loadParkingSpots() {
+            try {
+                const response = await fetch('/api/free_parkings');
+                if (!response.ok) {
+                    throw new Error('Failed to fetch parking spots');
+                }
+                const parkingSpots = await response.json();
+                const statusDiv = document.getElementById('status');
+                const parkingList = document.getElementById('parkingList');
+                
+                if (parkingSpots.length === 0) {
+                    statusDiv.textContent = 'No free parking spots available';
+                    return;
+                }
+
+                // Add distance to each parking spot if user location is available
+                const spotsWithDistance = parkingSpots.map(spot => ({
+                    ...spot,
+                    distance: userLocation 
+                        ? calculateDistance(
+                            userLocation.latitude, 
+                            userLocation.longitude, 
+                            spot.lat, 
+                            spot.lon
+                          )
+                        : null
+                }));
+
+                // Sort by distance if user location is available
+                if (userLocation) {
+                    spotsWithDistance.sort((a, b) => a.distance - b.distance);
+                }
+
+                // Clear loading message
+                statusDiv.textContent = `${parkingSpots.length} free parking spots found`;
+
+                // Display parking spots
+                parkingList.innerHTML = spotsWithDistance.map(spot => {
+                    const zoneClass = spot.park_type === "Weiss markiert" 
+                        ? "white-zone" 
+                        : spot.park_type === "Blaue Zone" 
+                            ? "blue-zone" 
+                            : "";
+                    console.log(`Parking type: ${spot.park_type}, assigned class: ${zoneClass}`);
+                    
+                    const timeAgo = spot.updated_at ? formatTimeDifference(spot.updated_at) : 'unknown';
+                    
+                    const googleMapsUrl = `https://www.google.com/maps?q=${spot.lat},${spot.lon}`;
+                    
+                    return `
+                        <li class="parking-item ${zoneClass}" 
+                            onclick="window.open('${googleMapsUrl}', '_blank')"
+                            role="button"
+                            aria-label="Open in Google Maps">
+                            <div class="distance">
+                                Distance = ${formatDistance(spot.distance)}
+                                <div style="font-size: 16px; color: #666; margin-top: 5px;">
+                                    Last checked: ${timeAgo}
+                                </div>
+                            </div>
+                        </li>
+                    `;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('status').innerHTML = `
+                    <div class="error">
+                        Error loading parking spots: ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Get user location and load parking spots
+        function init() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userLocation = position.coords;
+                        loadParkingSpots();
+                    },
+                    (error) => {
+                        console.warn('Geolocation error:', error);
+                        loadParkingSpots(); // Load spots anyway, just without sorting
+                    }
+                );
+            } else {
+                console.warn('Geolocation not supported');
+                loadParkingSpots(); // Load spots anyway, just without sorting
+            }
+        }
+
+        // Start the application
+        init();
+    </script>
+</body>
+</html>

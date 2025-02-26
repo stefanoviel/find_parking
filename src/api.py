@@ -129,14 +129,15 @@ def _get_free_parkings():
                     park_type, 
                     park_duration, 
                     park_charges,
-                    ST_X(geom) AS lon,
-                    ST_Y(geom) AS lat,
+                    ST_X(ST_Transform(geom, 4326)) AS lon,
+                    ST_Y(ST_Transform(geom, 4326)) AS lat,
                     CASE WHEN state IS NULL THEN 0
                         WHEN updated_at < (NOW() - INTERVAL '30 minutes') THEN 0
                         WHEN updated_at >= (NOW() - INTERVAL '30 minutes') AND state = 0 THEN 0
                         ELSE 1 
                         END 
-                    AS state
+                    AS state,
+                    updated_at
             FROM park
             LEFT JOIN latest_park_state
             USING (park_id)
@@ -160,7 +161,8 @@ def _get_free_parkings():
             "park_duration": row.park_duration,
             "park_charges": row.park_charges,
             "lon": row.lon,
-            "lat": row.lat
+            "lat": row.lat,
+            "updated_at": row.updated_at
         })
 
     return parks
