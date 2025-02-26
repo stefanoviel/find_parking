@@ -384,14 +384,6 @@
       map.setView([initialCoords.lat, initialCoords.lon], 16);
     }
 
-    // Update the click handler to use the same functions
-    document.getElementById('locate-me').addEventListener('click', () => {
-      if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(handleLocation, handleLocationError);
-      } else {
-        alert("Geolocation is not supported by your browser");
-      }
-    });
 
   </script>
 </body>
