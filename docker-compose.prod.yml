@@ -48,5 +48,15 @@ services:
       - flask-api
 
 volumes:
-  db:
+  db:zhpark-frontend  | 
+zhpark-frontend  | 2025/02/26 20:50:12 [emerg] 10#10: cannot load certificate "/etc/letsencrypt/live/your-domain.com/fullchain.pem": BIO_new_file() failed (SSL: error:80000002:system library::No such file or directory:calling fopen(/etc/letsencrypt/live/your-domain.com/fullchain.pem, r) error:10000080:BIO routines::no such file)
+zhpark-frontend  | nginx: [emerg] cannot load certificate "/etc/letsencrypt/live/your-domain.com/fullchain.pem": BIO_new_file() failed (SSL: error:80000002:system library::No such file or directory:calling fopen(/etc/letsencrypt/live/your-domain.com/fullchain.pem, r) error:10000080:BIO routines::no such file)
+zhpark-frontend  | nginx: configuration file /etc/nginx/nginx.conf test failed
+zhpark-frontend  | 
+zhpark-frontend  | The nginx plugin is not working; there may be problems with your existing configuration.
+zhpark-frontend  | The error was: MisconfigurationError('Error while running nginx -c /etc/nginx/nginx.conf -t.\n\n2025/02/26 20:50:12 [emerg] 10#10: cannot load certificate "/etc/letsencrypt/live/your-domain.com/fullchain.pem": BIO_new_file() failed (SSL: error:80000002:system library::No such file or directory:calling fopen(/etc/letsencrypt/live/your-domain.com/fullchain.pem, r) error:10000080:BIO routines::no such file)\nnginx: [emerg] cannot load certificate "/etc/letsencrypt/live/your-domain.com/fullchain.pem": BIO_new_file() failed (SSL: error:80000002:system library::No such file or directory:calling fopen(/etc/letsencrypt/live/your-domain.com/fullchain.pem, r) error:10000080:BIO routines::no such file)\nnginx: configuration file /etc/nginx/nginx.conf test failed\n')
+zhpark-frontend  | 2025/02/26 20:50:12 [emerg] 1#1: cannot load certificate "/etc/letsencrypt/live/your-domain.com/fullchain.pem": BIO_new_file() failed (SSL: error:80000002:system library::No such file or directory:calling fopen(/etc/letsencrypt/live/your-domain.com/fullchain.pem, r) error:10000080:BIO routines::no such file)
+zhpark-frontend  | nginx: [emerg] cannot load certificate "/etc/letsencrypt/live/your-domain.com/fullchain.pem": BIO_new_file() failed (SSL: error:80000002:system library::No such file or directory:calling fopen(/etc/letsencrypt/live/your-domain.com/fullchain.pem, r) error:10000080:BIO routines::no such file)
+zhpark-frontend exited with code 1
+
   letsencrypt: 
