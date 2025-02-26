@@ -51,6 +51,10 @@
   <!-- MarkerClusterGroup JS -->
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
   <script>
+    // Add this near the top of your script section
+    // Get API URL from environment variable or fall back to default
+    const API_URL = window.API_URL || 'http://localhost:5000';
+
     // Define the projection transformation from CH1903+ (LV95) to WGS84
     proj4.defs("EPSG:2056", "+proj=somerc +lat_0=46.952405555556 +lon_0=7.4395833333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +towgs84=674.374,15.056,405.346,0.0,0.0,0.0,0.0 +units=m +no_defs");
 
@@ -125,8 +129,8 @@
     function dummyApiCall(status, slotId) {
       console.log(`Dummy API call: Parking slot ${slotId} marked as ${status}`);
       // Make actual API call to update park state
-      console.log(`${'http://localhost:5000'}/api/park_state/${slotId}/${status === 'free' ? 1 : 0}`);
-      fetch(`${'http://localhost:5000'}/api/park_state/${slotId}/${status === 'free' ? 1 : 0}`, {
+      console.log(`${API_URL}/api/park_state/${slotId}/${status === 'free' ? 1 : 0}`);
+      fetch(`${API_URL}/api/park_state/${slotId}/${status === 'free' ? 1 : 0}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -152,8 +156,9 @@
 
     // Load parking slots from your backend API
     function loadParkingSlots() {
-      console.log(`${'http://localhost:5000'}/api/park_geom`);
-      fetch(`${'http://localhost:5000'}/api/park_geom`)
+      const API_URL = window.API_URL || 'http://localhost:5000';
+      console.log(`${API_URL}/api/park_geom`);
+      fetch(`${API_URL}/api/park_geom`)
         .then(response => response.json())
         .then(data => {
           data.forEach(slot => {
@@ -192,8 +197,9 @@
 
     // Demo version: simulate API response if your backend is not available.
     function loadParkingSlotsDemo() {
-      console.log(`${'http://localhost:5000'}/api/park_geom_state`);
-      fetch(`${'http://localhost:5000'}/api/park_geom_state`, {
+      const API_URL = window.API_URL || 'http://localhost:5000';
+      console.log(`${API_URL}/api/park_geom_state`);
+      fetch(`${API_URL}/api/park_geom_state`, {
         method: 'GET',
         headers: {
           'Accept': 'application/json',
