@@ -4,7 +4,7 @@
 find /usr/share/nginx/html -type f -name "*.html" -exec sed -i "s|window.API_URL|'${API_URL}'|g" {} \;
 
 # Your domain name
-DOMAIN="myparking.online/"
+DOMAIN="myparking.online"
 
 # Check if certificates already exist
 if [ ! -f /etc/letsencrypt/live/$DOMAIN/fullchain.pem ]; then

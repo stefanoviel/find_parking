@@ -156,6 +156,7 @@
 
     // Load parking slots from your backend API
     function loadParkingSlots() {
+      const API_URL = window.API_URL || 'http://localhost:5000';
       console.log(`${API_URL}/api/park_geom`);
       fetch(`${API_URL}/api/park_geom`)
         .then(response => response.json())
@@ -196,6 +197,7 @@
 
     // Demo version: simulate API response if your backend is not available.
     function loadParkingSlotsDemo() {
+      const API_URL = window.API_URL || 'http://localhost:5000';
       console.log(`${API_URL}/api/park_geom_state`);
       fetch(`${API_URL}/api/park_geom_state`, {
         method: 'GET',

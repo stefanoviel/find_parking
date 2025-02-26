@@ -1,7 +1,8 @@
-FROM nginx:mainline
+FROM nginx:alpine
 
 # Install certbot and its nginx plugin
 RUN apk add --no-cache certbot certbot-nginx
+
 
 # Remove the COPY command since we're using volumes
 # COPY map.html /usr/share/nginx/html/index.html
