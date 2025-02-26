@@ -3,6 +3,9 @@ FROM nginx:alpine
 # Install certbot and its nginx plugin
 RUN apk add --no-cache certbot certbot-nginx
 
+# Enable sub_filter module
+RUN sed -i '1iload_module modules/ngx_http_sub_module.so;' /etc/nginx/nginx.conf
+
 # Remove the COPY command since we're using volumes
 # COPY map.html /usr/share/nginx/html/index.html
 
