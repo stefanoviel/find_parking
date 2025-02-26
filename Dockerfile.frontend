@@ -1,3 +1,16 @@
 FROM nginx:alpine
-COPY . /usr/share/nginx/html
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+ARG ENVIRONMENT=dev
+
+# create an environment variable for the environment
+ENV ENVIRONMENT=$ENVIRONMENT
+
+COPY ./frontend /usr/share/nginx/html
+COPY ./frontend/nginx.${ENVIRONMENT}.conf /etc/nginx/conf.d/default.conf
+
+# Install certbot and its nginx plugin
+RUN if [ "$ENVIRONMENT" = "prod" ] ; then \
+        apk add --no-cache certbot certbot-nginx ; \
+    fi
+
+EXPOSE 80 443
