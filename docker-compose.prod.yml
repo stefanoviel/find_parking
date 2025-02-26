@@ -37,15 +37,16 @@ services:
       dockerfile: Dockerfile
     container_name: zhpark-frontend
     environment:
-      - API_URL=http://63.34.88.109:5000  # Production API URL
+      - API_URL=http://63.34.88.109:5000
     volumes:
       - ./frontend:/usr/share/nginx/html
-      - ./ssl:/etc/nginx/ssl  # Add this line to mount SSL certificates
+      - letsencrypt:/etc/letsencrypt
     ports:
       - "80:80"
-      - "443:443"  # Add this line for HTTPS
+      - "443:443"
     depends_on:
       - flask-api
 
 volumes:
-  db: 
+  db:
+  letsencrypt: 
