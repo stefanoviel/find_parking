@@ -40,8 +40,10 @@ services:
       - API_URL=http://63.34.88.109:5000  # Production API URL
     volumes:
       - ./frontend:/usr/share/nginx/html
+      - ./ssl:/etc/nginx/ssl  # Add this line to mount SSL certificates
     ports:
       - "80:80"
+      - "443:443"  # Add this line for HTTPS
     depends_on:
       - flask-api
 
