@@ -11,6 +11,8 @@ services:
       - ./data:/data
     ports:
       - "${POSTGRES_PORT}:5432"
+    networks:
+      - app-network
 
   flask-api:
     build:
